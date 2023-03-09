@@ -1,0 +1,44 @@
+Урок 79. XmlPullParser. Парсим XML
+17 мая 2012
+В этом уроке:
+- парсим XML с помощью XmlPullParser
+
+XmlPullParser – XML-парсер, который можно использовать для разбора XML документа. Принцип его работы заключается в том, что он пробегает весь документ, останавливаясь на его элементах. Но пробегает он не сам, а с помощью метода next. Мы постоянно вызываем метод next и с помощью метода getEventType проверяем, на каком элементе парсер остановился.
+Основные элементы документа, которые ловит парсер:
+START_DOCUMENT – начало документа
+START_TAG – начало тэга
+TEXT – содержимое элемента
+END_TAG – конец тэга
+END_DOCUMENT – конец документа
+
+Напишем приложение, которое возьмет xml-файл и разберет его на тэги и аттрибуты.
+
+Создадим проект:
+Project name: P0791_ XmlPullParser Build Target: Android 2.3.3 Application name: XmlPullParser Package name: ru.startandroid.develop.p0791xmlpullparser Create Activity: MainActivity
+
+В папке res создайте папку xml, и в ней создайте файл data.xml:
+Это файл с описанием телефона Samsung Galaxy. Указаны его цена, характеристики экрана и возможные цвета корпуса. Данные выдуманы и могут не совпадать с реальностью :)
+
+MainActivity.java:
+В onCreate мы получаем XmlPullParser с помощью метода prepareXpp и начинаем его разбирать. Затем в цикле while мы запускаем прогон документа, пока не достигнем конца - END_DOCUMENT. Прогон обеспечивается методом next в конце цикла while. В switch мы проверяем на каком элементе остановился парсер.
+START_DOCUMENT – начало документа
+START_TAG – начало тега. Выводим в лог имя тэга, его уровень в дереве тэгов (глубину) и количество атрибутов. Следующей строкой выводим имена и значения атрибутов, если они есть.
+END_TAG – конец тэга. Выводим только имя.
+TEXT – содержимое тэга
+
+В методе prepareXpp мы подготавливаем XmlPullParser. Для этого вытаскиваем данные из папки res/xml. Это аналогично вытаскиванию строк или картинок – сначала получаем доступ к ресурсам (getResources), затем вызываем метод, соответствующий ресурсу. В нашем случае это - метод getXml. Но возвращает он не xml-строку , а готовый XmlPullParser.
+Все сохраним и запустим приложение.
+
+Смотрим лог:
+START_DOCUMENT START_DOCUMENT START_TAG: name = data, depth = 1, attrCount = 0 START_TAG: name = phone, depth = 2, attrCount = 0 START_TAG: name = company, depth = 3, attrCount = 0 text = Samsung END_TAG: name = company START_TAG: name = model, depth = 3, attrCount = 0 text = Galaxy END_TAG: name = model START_TAG: name = price, depth = 3, attrCount = 0 text = 18000 END_TAG: name = price START_TAG: name = screen, depth = 3, attrCount = 2 Attributes: multitouch = yes, resolution = 320x480,  text = 3 END_TAG: name = screen START_TAG: name = colors, depth = 3, attrCount = 0 START_TAG: name = color, depth = 4, attrCount = 0 text = black END_TAG: name = color START_TAG: name = color, depth = 4, attrCount = 0 text = white END_TAG: name = color END_TAG: name = colors END_TAG: name = phone END_TAG: name = data END_DOCUMENT START_DOCUMENT START_DOCUMENT START_TAG: name = data, depth = 1, attrCount = 0 START_TAG: name = phone, depth = 2, attrCount = 0 START_TAG: name = company, depth = 3, attrCount = 0 text = Samsung END_TAG: name = company START_TAG: name = model, depth = 3, attrCount = 0 text = Galaxy END_TAG: name = model START_TAG: name = price, depth = 3, attrCount = 0 text = 18000 END_TAG: name = price START_TAG: name = screen, depth = 3, attrCount = 2 Attributes: multitouch = yes, resolution = 320x480,  text = 3 END_TAG: name = screen START_TAG: name = colors, depth = 3, attrCount = 0 START_TAG: name = color, depth = 4, attrCount = 0 text = black END_TAG: name = color START_TAG: name = color, depth = 4, attrCount = 0 text = white END_TAG: name = color END_TAG: name = colors END_TAG: name = phone END_TAG: name = data END_DOCUMENT
+START_DOCUMENT срабатывает два раза по неведомым мне причинам. Далее можно наблюдать, как парсер останавливается в начале каждого тега и дает нам информацию о нем: имя, уровень (глубина), количество атрибутов, имена и названия атрибутов, текст. Также он останавливается в конце тега и мы выводим имя. В конце парсер говорит, что документ закончен END_DOCUMENT.
+
+Если xml у вас не в файле, а получен откуда-либо, то XmlPullParser надо создавать другим способом. Перепишем метод prepareXpp:
+Здесь мы сами создаем парсер с помощью фабрики, включаем поддержку namespace (в нашем случае это не нужно, на всякий случай показываю) и даем парсеру на вход поток из xml-строки (укороченный вариант data.xml).
+Все сохраним и запустим. Смотрим лог:
+START_DOCUMENT START_TAG: name = data, depth = 1, attrCount = 0 START_TAG: name = phone, depth = 2, attrCount = 0 START_TAG: name = company, depth = 3, attrCount = 0 text = Samsung END_TAG: name = company END_TAG: name = phone END_TAG: name = data END_DOCUMENT
+Здесь уже START_DOCUMENT сработал один раз, как и должно быть. Ну и далее идут данные элементов документа.
+Присоединяйтесь к нам в Telegram:
+- в канале StartAndroid публикуются ссылки на новые статьи с сайта startandroid.ru и интересные материалы с хабра, medium.com и т.п.
+- в чатах решаем возникающие вопросы и проблемы по различным темам: Android, Compose, Kotlin, RxJava, Dagger, Тестирование, Performance
+- ну и если просто хочется поговорить с коллегами по разработке, то есть чат Флудильня

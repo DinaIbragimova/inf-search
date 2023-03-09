@@ -1,0 +1,80 @@
+Урок 96. Service. Обратная связь с помощью BroadcastReceiver
+16 июля 2012
+В этом уроке:
+- получаем из сервиса результат с помощью BroadcastReceiver
+
+В прошлом уроке мы использовали PendingIntent для получения обратной связи от сервиса. В этом уроке для этой же цели используем BroadcastReceiver.
+Схема такая:
+- в Activity создаем BroadcastReceiver, а также создаем IntentFilter, настроенный на определенный Action, и регистрируем (включаем) эту пару. Теперь BroadcastReceiver будет получать Intent-ы подходящие под условия IntentFilter
+- в сервисе, когда нам понадобится передать данные в Activity, мы создаем Intent (с Action из предыдущего пункта), кладем в него данные, которые хотим передать, и посылаем его на поиски BroadcastReceiver
+- BroadcastReceiver в Activity ловит этот Intent и извлекает из него данные
+Т.е. тут все аналогично вызовам Activity с использованием Action и IntentFilter. Если Action в Intent (отправленном из сервиса) и в IntentFilter (у BroadcastReceiver в Activity) совпадут, то BroadcastReceiver получит этот Intent и сможет извлечь данные для Activity.
+Пример сделаем полностью аналогичный прошлому уроку. У нас будет приложение, которое будет отправлять в сервис на выполнение три задачи. А сервис будет информировать, когда он начал каждую задачу выполнять, когда закончил и с каким результатом. Все это будем выводить на экран Activity.
+
+Создадим проект:
+Project name: P0961_ServiceBackBroadcast Build Target: Android 2.3.3 Application name: ServiceBackBroadcast Package name: ru.startandroid.develop.p0961servicebackbroadcast Create Activity: MainActivity
+
+Добавим в strings.xml строки:
+
+
+Экран main.xml:
+Три TextView, в которые будем выводить инфу, поступающую из сервиса. И кнопка старта сервиса.
+
+Создаем класс для сервиса MyService.java. И пропишем его в манифесте. Пока в нем ничего не кодим.
+
+MainActivity.java:
+В onCreate находим TextView и присваиваем им начальные тексты. Далее создаем BroadcastReceiver и реализуем в нем метод onReceive. Все Intent-ы, которые получит BroadcastReceiver, будут переданы в этот метод нам на обработку. Мы извлекаем из Intent-а данные о задаче (код и статус) и меняем информацию о ней в соответствующем TextView. Если пришел статус STATUS_START – задача начала работу. Если STATUS_FINISH – закончила работу и Intent должен содержать результат (PARAM_RESULT).
+Далее мы создаем IntentFilter и настраиваем его на Action = MainActivity.BROADCAST_ACTION. В сервисе мы будем создавать Intent с тем же Action и отправлять на поиски. В итоге они должны состыковаться.
+Регистрируем BroadcastReceiver методом registerReceiver, передаем туда IntentFilter. Теперь BroadcastReceiver включен и ждет подходящих Intent.
+В методе onDestroy мы дерегистрируем (выключаем) BroadcastReceiver методом unregisterReceiver.
+В onClickStart мы создаем Intent-ы, помещаем в них данные о длительности паузы и код задачи и отправляем в сервис.
+
+Теперь кодим сервис.
+MyService.java:
+Как и в прошлом уроке, используем экзекьютор (на два потока) для параллельного выполнения задач.
+В методе run класса MyRun будем, как обычно, ставить паузу и сообщать в Activity о начале и завершении задачи.
+Чтобы отправить данные в Activity, создаем Intent с Action = MainActivity.BROADCAST_ACTION и помещаем в него данные, которые хотим передать. Чтобы передать информацию о том, что задача начала работать, мы передаем код задачи (task) и статус начала (MainActivity.STATUS_START). И методом sendBroadcast отправляем Intent искать подходящий BroadcastReceiver. Он найдется в нашем Activity, обработает Intent и обновит инфу о задачах в TextView.
+Чтобы передать информацию о том, что задача закончила работу, мы передаем  статус завершения (MainActivity. STATUS_FINISH) и результат (время * 100). task в Intent не пишем, т.к. он ранее уже был записан (при первой отправке, в начале работы задачи). Методом sendBroadcast отправляем Intent искать подходящий BroadcastReceiver. Он найдется в нашем Activity, обработает Intent и обновит инфу о задачах в TextView.
+После всего этого вызываем stopSelfResult.
+
+Все сохраняем и запускаем приложение.
+
+Жмем Start.
+Видим, что две задачи начали работать, т.к. экзекьютор настроен на два потока.
+
+
+Одна задача завершилась и показала результат, поток освободился, стартует оставшаяся задача.
+
+
+Еще одна задача завершилась.
+
+
+Последняя завершилась.
+
+
+Смотрим логи (т.к. используем потоки, у вас может быть немного другая последовательность записей в логах):
+MyService onCreate MyService onStartCommand MyRun#1 create MyService onStartCommand MyRun#2 create MyRun#1 start, time = 7 MyService onStartCommand MyRun#3 create
+Сервис создался и получил все три вызова.
+onReceive: task = 1, status = 100 MyRun#2 start, time = 4 onReceive: task = 2, status = 100
+В Activity получаем сообщение о том, что первая (task = 1) и вторая (task = 2) задачи начали работать (status = 100)
+onReceive: task = 2, status = 200 MyRun#2 end, stopSelfResult(2) = false
+MyRun#2 завершена и в Activity получаем сообщение о том, что вторая (task = 2) задача закончила работать (status = 200)
+MyRun#3 start, time = 6 onReceive: task = 3, status = 100
+MyRun#3 начала работать в освободившемся после MyRun#2 потоке. В Activity получаем сообщение о том, что третья (task = 3) задача начала работать (status = 100)
+MyRun#1 end, stopSelfResult(1) = false onReceive: task = 1, status = 200
+MyRun#1 завершена и в Activity получаем сообщение о том, что первая (task = 1) задача закончила работать (status = 200)
+
+onReceive: task = 3, status = 200 MyRun#3 end, stopSelfResult(3) = true
+MyRun#3 завершена и в Activity получаем сообщение о том, что третья (task = 3) задача закончила работать (status = 200)
+MyService onDestroy
+Сервис закрылся.
+
+Разумеется, моя схема нумерации задач и статусов взята из головы. Вы можете придумать и использовать свои какие угодно статусы. Я только показал еще один механизм, как можно получать и обрабатывать данные из сервиса.
+Ну и регистрируете и дерегистрируете BroadcastReceiver необязательно в onCreate и onDestroy. Делаете там, где это необходимо.
+
+На следующем уроке:
+- используем биндинг для подключения к сервису
+Присоединяйтесь к нам в Telegram:
+- в канале StartAndroid публикуются ссылки на новые статьи с сайта startandroid.ru и интересные материалы с хабра, medium.com и т.п.
+- в чатах решаем возникающие вопросы и проблемы по различным темам: Android, Compose, Kotlin, RxJava, Dagger, Тестирование, Performance
+- ну и если просто хочется поговорить с коллегами по разработке, то есть чат Флудильня

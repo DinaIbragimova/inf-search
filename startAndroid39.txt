@@ -1,0 +1,77 @@
+Урок 40. LayoutInflater. Учимся использовать.
+08 декабря 2011
+В этом уроке:
+- разбираем как можно использовать LayoutInflater
+
+После изучения SQLite самое время приступить к изучению списков – List. Но перед этим полезно будет узнать про LayoutInflater. Это знание пригодится нам в создании расширенных списков. Также перед этим уроком рекомендую снова прочесть урок про LayoutParams, освежить знания.
+LayoutInflater – это класс, который умеет из содержимого layout-файла создать View-элемент. Метод который это делает называется inflate. Есть несколько реализаций этого метода с различными параметрами. Но все они используют друг друга и результат их выполнения один – View.
+Мы рассмотрим эту реализацию – public View inflate (int resource, ViewGroup root, boolean attachToRoot)
+Как видим, на вход метод принимает три параметра:
+resource - ID layout-файла, который будет использован для создания View. Например - R.layout.mainroot – родительский ViewGroup-элемент для создаваемого View. LayoutParams от этого ViewGroup присваиваются создаваемому View.attachToRoot – присоединять ли создаваемый View к root. Если true, то root становится родителем создаваемого View. Т.е. это равносильно команде root.addView(View).  Если false – то создаваемый View просто получает LayoutParams от root, но его дочерним элементом не становится.
+
+Посмотрим на практике.
+
+Создадим проект:
+Project name: P0401_LayoutInflater Build Target: Android 2.3.3 Application name: LayoutInflater Package name: ru.startandroid.develop.p0401layoutinflater Create Activity: MainActivity
+
+Открываем main.xml и рисуем такой экран:
+На экране две ViewGroup - linLayout и relLayout. В них по TextView с соответствующим текстом.
+
+Создадим еще один layout-файл text.xml:
+Тут просто TextView без всяких ViewGroup. На нем мы и будем испытывать LayoutInflater.
+
+
+Открываем MainActivity.java и пишем код:
+Мы получаем LayoutInflater методом getLayoutInflater, используем его для получения View-элемента из layout-файла text.xml и считываем LayoutParams у свежесозданного view.
+Обратите внимание на параметры, которые мы использовали для метода inflate. Мы указали ID layout-ресурса, передали null в качестве родительского элемента и, соответственно, привязка к родителю - false.
+Все сохраним и запустим.
+
+На экране ничего не изменилось. Т.к. мы конвертнули layout в view, но никуда его не поместили. Он просто висит в памяти.
+
+
+Смотрим лог:
+Class of view: class android.widget.TextViewLayoutParams of view is null: trueText of view: Layout with TextView
+Мы видим класс созданного элемента - TextView. Все верно - этот элемент и был в файле text.xml. Далее видим null вместо LayoutParams. Это произошло потому, что родителя в методе inflate мы указали null. А именно от родителя view и должен был получить LayoutParams. Третья строка лога показывает текст TextView. Он тот же, что и в layout-файле text.xml – все верно.
+
+Давайте немного изменим программу. Будем добавлять наш созданный элемент в linLayout из main.xml. Делается это просто – командой addView.
+(добавляете только выделенные строки)
+
+Мы нашли linLayout с экрана и добавили в него созданный с помощью LayoutInflater элемент.
+
+Сохраняем, запускаем. Видим, что элемент добавился на экран в linLayout.
+
+
+Теперь давайте попробуем указать родителя (root) при вызове метода inflate. Перепишем метод onCreate:
+
+Мы находим элементы linLayout и relLayout с экрана и с помощью LayoutInflater создаем два View-элемента из layout-файла text.xml. Для первого указываем root – linLayout, для второго – relLayout. Но третий параметр attachToRoot оставляем false. Это значит, что созданный View-элемент получит LayoutParams от root-элемента, но не добавится к нему.
+
+Все сохраним, запустим. На экране ничего не поменялось. Т.к. мы ни к чему новые элементы не добавляли и attachToRoot = false.
+
+
+Смотрим лог:
+Class of view1: class android.widget.TextViewClass of layoutParams of view1: class android.widget.LinearLayout$LayoutParamsText of view1: Layout with TextViewClass of view2: class android.widget.TextViewClass of layoutParams of view2: class android.widget.RelativeLayout$LayoutParamsText of view2: Layout with TextView
+По логам видно, что класс созданных элементов – TextView. А класс LayoutParams различается. В первом случае – это LinearLayout$LayoutParams, т.к. в качестве root элемента в методе inflate мы указали linLayout, а это объект класса LinearLayout. Во втором случае класс LayoutParams у созданного элемента - RelativeLayout$LayoutParams. Потому, что в качестве root указали relLayout (класс RelativeLayout).
+
+Теперь у нас два варианта, как добавить созданные view1 и view2 на экран.
+1) Снова использовать методы addView
+2) Передавать true в качестве третьего параметра метода inflate. Тогда созданный View-элемент будет добавлен к root.
+
+Выберем второй вариант и внесем изменения в код:
+Передаем true в качестве третьего параметра в методе inflate и убираем строки выведения в лог текстов из TextView. Сейчас будет понятно почему.
+Все сохраним и запустим приложение.
+
+
+Как видим, созданные TextView появились в своих родителях, которых мы указали в методе inflate. В RelativeLayout элементы наложились друг на друга, т.к. мы не настроили расположение. В данный момент это не существенно.
+
+Смотрим лог:
+Class of view1: class android.widget.LinearLayout Class of layoutParams of view1: class android.widget.LinearLayout$LayoutParams Class of view2: class android.widget.RelativeLayout Class of layoutParams of view2: class android.widget.LinearLayout$LayoutParams
+Обратите внимание на класс элементов. В первом случае - это LinearLayout, а во втором - RelativeLayout. Т.е. метод inflate вернул нам не созданные из layout-файла View-элементы, а те, что мы указывали как root. А созданные из layout-файла View элементы он добавил в root как дочерние аналогично команде addView. Это произошло потому, что мы указали true в третьем параметре (attachToRoot) метода inflate.
+Соответственно LayoutParams для view1 и view2 будет LinearLayout$LayoutParams, т.к. linLayout и relLayout имеют родителя LinearLayout. И LayoutParams берут от него.
+Для закрепления темы на следующем уроке сделаем пример поинтереснее.
+
+На следующем уроке:
+- делаем свой вариант списка
+Присоединяйтесь к нам в Telegram:
+- в канале StartAndroid публикуются ссылки на новые статьи с сайта startandroid.ru и интересные материалы с хабра, medium.com и т.п.
+- в чатах решаем возникающие вопросы и проблемы по различным темам: Android, Compose, Kotlin, RxJava, Dagger, Тестирование, Performance
+- ну и если просто хочется поговорить с коллегами по разработке, то есть чат Флудильня
